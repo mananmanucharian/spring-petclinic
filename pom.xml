@@ -141,6 +141,13 @@
 
   </dependencies>
 
+<scm>
+    <connection>scm:git:https://github.com/mananmanucharian/spring-petclinic.git</connection>
+    <developerConnection>scm:git:https://github.com/mananmanucharian/spring-petclinic.git</developerConnection>
+    <url>https://github.com/mananmanucharian/spring-petclinic</url>
+    <tag>HEAD</tag>
+  </scm>
+
   <build>
     <plugins>
       <plugin>
