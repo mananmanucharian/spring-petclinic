@@ -1,69 +1,76 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = "spring-petclinic"
+    }
+
     stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the code from the repository
+                checkout scm
+            }
+        }
         stage('Checkstyle') {
             steps {
                 script {
-                    // Run Maven Checkstyle plugin
-                    sh 'mvn checkstyle:checkstyle'
+                    // Run Maven Checkstyle
+                    sh 'mvn checkstyle:check'
                 }
+                // Archive the Checkstyle report
+                archiveArtifacts artifacts: 'target/checkstyle-result.xml', allowEmptyArchive: true
             }
             post {
                 always {
-                    // Archive Checkstyle reports
-                    archiveArtifacts artifacts: 'target/checkstyle-result.xml', allowEmptyArchive: true
-                    // Publish Checkstyle report
-                    checkstyle pattern: 'target/checkstyle-result.xml'
+                    // Publish the Checkstyle report (if available)
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'target/site',
+                        reportFiles: 'checkstyle.html',
+                        reportName: 'Checkstyle Report'
+                    ])
                 }
             }
         }
-
-        stage('Test') {
-            steps {
-                script {
-                    // Run tests with Maven
-                    sh 'mvn test'
-                }
-            }
-            post {
-                always {
-                    // Archive test reports
-                    junit 'target/surefire-reports/*.xml'
-                }
-            }
-        }
-
         stage('Build') {
             steps {
                 script {
-                    // Build without running tests
-                    sh 'mvn clean package -DskipTests'
+                    // Run Maven build without tests
+                    sh 'mvn clean install -DskipTests'
                 }
+                // Archive the build artifacts (e.g., JAR files)
+                archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
             }
         }
-
-        // If Docker image creation and pushing stages are needed in the future, uncomment and use the following:
-        // stage('Create Docker Image') {
-        //     steps {
-        //         script {
-        //             // Get short commit hash
-        //             def shortCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    
-        //             // Build the Docker image
-        //             sh "docker build -t localhost:8083/main/spring-petclinic:${shortCommit} ."
-                    
-        //             // Push the Docker image to the main repository
-        //             sh "docker push localhost:8083/main/spring-petclinic:${shortCommit}"
-        //         }
-        //     }
-        // }
+        stage('Test') {
+            steps {
+                script {
+                    // Run Maven tests
+                    sh 'mvn test'
+                }
+                // Archive the test results
+                junit 'target/surefire-reports/*.xml'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build Docker image
+                    sh "docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} ."
+                }
+                // Archive the Docker image
+                archiveArtifacts artifacts: 'Dockerfile', allowEmptyArchive: true
+            }
+        }
     }
 
     post {
         always {
-            // Optional: Clean up Docker images to free space if needed
-            // sh "docker image prune -f || true"
+            // Clean up workspace
+            cleanWs()
         }
     }
 }
