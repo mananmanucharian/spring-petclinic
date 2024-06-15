@@ -1,25 +1,47 @@
+version: '3.8'
+
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:8.0
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=
-      - MYSQL_ALLOW_EMPTY_PASSWORD=true
-      - MYSQL_USER=petclinic
-      - MYSQL_PASSWORD=petclinic
-      - MYSQL_DATABASE=petclinic
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ALLOW_EMPTY_PASSWORD: true
+      MYSQL_USER: petclinic
+      MYSQL_PASSWORD: petclinic
+      MYSQL_DATABASE: petclinic
     volumes:
-      - "./conf.d:/etc/mysql/conf.d:ro"
+      - db-data:/var/lib/mysql
     profiles:
       - mysql
+
   postgres:
     image: postgres:16.3
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=petclinic
-      - POSTGRES_USER=petclinic
-      - POSTGRES_DB=petclinic
+      POSTGRES_PASSWORD: petclinic
+      POSTGRES_USER: petclinic
+      POSTGRES_DB: petclinic
+    volumes:
+      - pg-data:/var/lib/postgresql/data
     profiles:
       - postgres
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # MySQL connection settings
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME}
+    depends_on:
+      - ${DB_SERVICE}
+
+volumes:
+  db-data:
+  pg-data:
