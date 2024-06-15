@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_REGISTRY = "localhost:8084"
-        DOCKER_REPO = "mr/spring-petclinic"
+        DOCKER_REGISTRY = "localhost:8083"
+        DOCKER_REPO = "main/spring-petclinic"
     }
 
     stages {
@@ -48,7 +48,28 @@ pipeline {
             }
         }
 
-        stage('Create Docker Image') {
+        stage('Create Docker Image for Merge Requests') {
+            when {
+                branch 'merge-request-branch'
+            }
+            steps {
+                script {
+                    // Get short commit hash
+                    def shortCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    
+                    // Build the Docker image
+                    sh "docker build -t localhost:8084/mr/spring-petclinic:${shortCommit} ."
+                    
+                    // Push the Docker image to the mr repository
+                    sh "docker push localhost:8084/mr/spring-petclinic:${shortCommit}"
+                }
+            }
+        }
+
+        stage('Create Docker Image for Main Branch') {
+            when {
+                branch 'main'
+            }
             steps {
                 script {
                     // Get short commit hash
@@ -57,7 +78,7 @@ pipeline {
                     // Build the Docker image
                     sh "docker build -t ${DOCKER_REGISTRY}/${DOCKER_REPO}:${shortCommit} ."
                     
-                    // Push the Docker image to the repository
+                    // Push the Docker image to the main repository
                     sh "docker push ${DOCKER_REGISTRY}/${DOCKER_REPO}:${shortCommit}"
                 }
             }
@@ -67,7 +88,7 @@ pipeline {
     post {
         always {
             // Clean up Docker images to free space
-            sh "docker rmi ${DOCKER_REGISTRY}/${DOCKER_REPO}:${shortCommit} || true"
+            sh "docker image prune -f || true"
         }
     }
 }
