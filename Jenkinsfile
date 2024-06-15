@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_REGISTRY = "localhost:8083"
+        DOCKER_REGISTRY = "localhost:8084"
         DOCKER_REPO = "main/spring-petclinic"
     }
 
@@ -58,10 +58,10 @@ pipeline {
                     def shortCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     
                     // Build the Docker image
-                    sh "docker build -t localhost:8084/mr/spring-petclinic:${shortCommit} ."
+                    sh "docker build -t localhost:8082/mr/spring-petclinic:${shortCommit} ."
                     
                     // Push the Docker image to the mr repository
-                    sh "docker push localhost:8084/mr/spring-petclinic:${shortCommit}"
+                    sh "docker push localhost:8082/mr/spring-petclinic:${shortCommit}"
                 }
             }
         }
