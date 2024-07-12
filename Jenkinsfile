@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // Docker Hub credentials
         GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        BRANCH_NAME = env.BRANCH_NAME
+        BRANCH_NAME = "${env.BRANCH_NAME}"
     }
 
     stages {
@@ -60,12 +60,13 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    def repository = BRANCH_NAME == 'main' ? 'main' : 'mr'
                     docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIALS) {
-                        docker.image("mananmanucharian474/spring-petclinic:${BRANCH_NAME == 'main' ? 'latest' : GIT_COMMIT_SHORT}").push()
+                        def imageTag = BRANCH_NAME == 'main' ? 'latest' : GIT_COMMIT_SHORT
+                        docker.image("mananmanucharian474/spring-petclinic:${imageTag}").push()
                     }
                 }
             }
         }
     }
 }
+
