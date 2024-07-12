@@ -2,24 +2,67 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        BRANCH_NAME = env.BRANCH_NAME
     }
 
     stages {
-        stage('Build') {
+        stage('Checkstyle') {
+            when {
+                not { branch 'main' }
+            }
             steps {
                 script {
-                    def app = docker.build("myapp:${env.BUILD_ID}")
+                    docker.image('maven:3.6.3-jdk-11').inside {
+                        sh 'mvn checkstyle:checkstyle'
+                        archiveArtifacts artifacts: '**/target/checkstyle-result.xml', allowEmptyArchive: true
+                    }
                 }
             }
         }
 
-        stage('Push') {
+        stage('Test') {
+            when {
+                not { branch 'main' }
+            }
             steps {
                 script {
+                    docker.image('maven:3.6.3-jdk-11').inside {
+                        sh 'mvn test'
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            when {
+                not { branch 'main' }
+            }
+            steps {
+                script {
+                    docker.image('maven:3.6.3-jdk-11').inside {
+                        sh 'mvn clean package -DskipTests'
+                    }
+                }
+            }
+        }
+
+        stage('Create Docker Image') {
+            steps {
+                script {
+                    def imageTag = BRANCH_NAME == 'main' ? 'latest' : GIT_COMMIT_SHORT
+                    docker.build("mananmanucharian474/spring-petclinic:${imageTag}")
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    def repository = BRANCH_NAME == 'main' ? 'main' : 'mr'
                     docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDENTIALS) {
-                        app.push("latest")
-                        app.push("${env.BUILD_ID}")
+                        docker.image("mananmanucharian474/spring-petclinic:${BRANCH_NAME == 'main' ? 'latest' : GIT_COMMIT_SHORT}").push()
                     }
                 }
             }
