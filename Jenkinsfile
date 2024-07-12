@@ -5,9 +5,35 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credential')
         GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         BRANCH_NAME = "${env.BRANCH_NAME}"
+        JD_TO_PULL = 'spring-petclinic:latest' 
     }
 
     stages {
+        stage('Check Docker Image') {
+            steps {
+                script {
+                    echo "Docker image to pull: ${env.JD_TO_PULL}"
+                }
+            }
+        }
+        stage('Network Check') {
+            steps {
+                script {
+                    sh 'ping -c 4 hub.docker.com'
+                }
+            }
+        }
+        stage('Docker Login') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credential', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                        sh '''
+                            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                        '''
+                    }
+                }
+            }
+        }
         stage('Checkstyle') {
             when {
                 not { branch 'main' }
@@ -67,6 +93,11 @@ pipeline {
                 }
             }
         }
+
+        stage('Verify Docker Image') {
+            steps {
+                sh 'docker images'
+            }
+        }
     }
 }
-
