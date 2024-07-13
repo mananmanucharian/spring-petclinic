@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven'
+    }
+
     environment {
         DOCKER_HUB_REPO = 'mananmanucharian474/mr'
     }
@@ -21,8 +25,10 @@ pipeline {
             }
             post {
                 always {
+                    // Archive the Checkstyle report
                     archiveArtifacts artifacts: '**/target/checkstyle-result.xml', allowEmptyArchive: true
 
+                    // Publish the Checkstyle report
                     publishHTML(target: [
                         reportName : 'Checkstyle Report',
                         reportDir  : 'target/site',
@@ -37,6 +43,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
+                    // Run tests with Maven
                     sh 'mvn test'
                 }
             }
@@ -64,9 +71,9 @@ pipeline {
             steps {
                 script {
                     def GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
                     sh "docker build -t ${DOCKER_HUB_REPO}:${GIT_COMMIT_SHORT} ."
 
-                    
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
                         sh 'echo $DOCKER_HUB_PASSWORD | docker login -u $DOCKER_HUB_USERNAME --password-stdin'
                     }
@@ -79,6 +86,7 @@ pipeline {
 
     post {
         always {
+            // Clean workspace after build
             cleanWs()
         }
     }
