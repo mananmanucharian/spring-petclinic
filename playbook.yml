@@ -1,0 +1,84 @@
+---
+- name: Manage Docker container for Spring Petclinic Application
+  hosts: application_servers
+  become: false
+  vars:
+    docker_image_name: "spring-petclinic:latest"
+    docker_container_name: "spring-petclinic"
+    application_port: 8080
+    ansible_python_interpreter: /usr/local/bin/python3.11
+
+  tasks:
+    - name: Ensure Homebrew is installed (macOS)
+      command: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      args:
+        creates: /usr/local/bin/brew
+      when: ansible_os_family == 'Darwin'
+
+    - name: Ensure Docker is installed on macOS
+      homebrew:
+        name: docker
+        state: present
+      when: ansible_os_family == 'Darwin'
+
+    - name: Ensure Docker Desktop is running on macOS
+      command: open -a Docker
+      ignore_errors: true
+      when: ansible_os_family == 'Darwin'
+
+    - name: Wait for Docker to be running on macOS
+      wait_for:
+        port: 8080
+        host: localhost
+        delay: 10
+        timeout: 300
+      when: ansible_os_family == 'Darwin'
+
+    - name: Ensure Docker is installed on Debian-based systems
+      become: true
+      apt:
+        name: docker.io
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Ensure Docker is started and enabled on Debian-based systems
+      become: true
+      service:
+        name: docker
+        state: started
+        enabled: true
+      when: ansible_os_family == 'Debian'
+
+    - name: Pull Docker image
+      docker_image:
+        name: "{{ docker_image_name }}"
+        source: pull
+
+    - name: Stop and remove any existing container
+      docker_container:
+        name: "{{ docker_container_name }}"
+        state: absent
+        force_kill: yes
+
+    - name: Run the Docker container
+      docker_container:
+        name: "{{ docker_container_name }}"
+        image: "{{ docker_image_name }}"
+        state: started
+        ports:
+          - "8080:8080"
+
+    - name: Wait for application to be up
+      uri:
+        url: "http://localhost:{{ application_port }}"
+        status_code: 200
+        timeout: 30
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Open application in browser (optional, only works locally)
+      command: "open http://localhost:{{ application_port }}"
+      delegate_to: localhost
+      run_once: true
