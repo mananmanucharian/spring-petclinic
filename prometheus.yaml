@@ -1,0 +1,14 @@
+rules:
+  - pattern: "java.lang<type=OperatingSystem><>(FreePhysicalMemorySize|TotalPhysicalMemorySize|SystemCpuLoad|ProcessCpuLoad):"
+    name: "java_lang_OperatingSystem_$1"
+    type: GAUGE
+    help: "Operating system metrics from java.lang"
+  - pattern: "java.lang<type=Memory><>HeapMemoryUsage.used"
+    name: "java_lang_Memory_HeapMemoryUsage_used"
+    type: GAUGE
+    help: "Heap memory usage"
+  - pattern: "java.lang<type=Runtime><>Uptime"
+    name: "java_lang_Runtime_Uptime"
+    type: GAUGE
+    help: "JVM uptime"
+
